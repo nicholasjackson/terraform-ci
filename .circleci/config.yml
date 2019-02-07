@@ -1,0 +1,79 @@
+version: 2
+jobs:
+  plan:
+    working_directory: ${CIRCLE_WORKING_DIRECTORY}/terraform_ci
+    docker:
+      - image: hashicorp/terraform:latest
+    steps:
+      - checkout
+      - run:
+          command: mkdir plan
+      - run:
+          name: Terraform plan
+          command: |
+            mkdir -p plan
+            terraform version
+            terraform init
+            terraform workspace select ${CIRCLE_BRANCH} 
+            terraform plan -out=plan/${CIRCLE_BRANCH}.out
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - plan/
+            - .terraform
+
+  apply-manual: &apply
+    working_directory: ${CIRCLE_WORKING_DIRECTORY}/terraform_ci
+    docker:
+      - image: hashicorp/terraform:latest
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Terraform apply
+          command: |
+            cp -R /tmp/workspace/.terraform .
+            terraform apply /tmp/workspace/plan/${CIRCLE_BRANCH}.out
+  
+  apply-auto:
+    <<: *apply
+
+workflows:
+  version: 2
+  plan-and-apply:
+    jobs:
+      - plan:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only: /.*/
+
+      - hold:
+          type: approval
+          requires:
+           - plan
+          filters:
+            tags:
+              only: /master/
+            branches:
+              only: /master/
+
+      - apply-auto:
+          requires:
+            - plan
+          filters:
+            tags:
+              only: /dev/
+            branches:
+              only: /dev/
+
+      - apply-manual:
+          requires:
+            - hold
+          filters:
+            tags:
+              only: /master/
+            branches:
+              only: /master/
