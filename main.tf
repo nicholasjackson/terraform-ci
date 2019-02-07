@@ -13,7 +13,7 @@ terraform {
 
 resource "digitalocean_droplet" "web" {
   image  = "ubuntu-18-04-x64"
-  name   = "web-1-${terraform.workspace}"
+  name   = "web-1-${terraform.workspace}-dfdfd"
   region = "ams3"
   size   = "s-1vcpu-1gb"
 }
