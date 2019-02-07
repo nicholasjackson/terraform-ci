@@ -1,7 +1,6 @@
 version: 2
 jobs:
   plan:
-    working_directory: ${CIRCLE_WORKING_DIRECTORY}/terraform_ci
     docker:
       - image: hashicorp/terraform:latest
     steps:
@@ -14,6 +13,11 @@ jobs:
             mkdir -p plan
             terraform version
             terraform init
+            # Do we need to create a workspace?
+            if [[ "$(terraform workspace list | grep -c master)" == "0" ]]; then
+              terraform workspace new ${CIRCLE_BRANCH}
+            fi
+
             terraform workspace select ${CIRCLE_BRANCH} 
             terraform plan -out=plan/${CIRCLE_BRANCH}.out
       - persist_to_workspace:
@@ -23,7 +27,6 @@ jobs:
             - .terraform
 
   apply-manual: &apply
-    working_directory: ${CIRCLE_WORKING_DIRECTORY}/terraform_ci
     docker:
       - image: hashicorp/terraform:latest
     steps:
